@@ -1,86 +1,109 @@
-# Data Challenge — 31 天 Inventory Online Learning
+# Data Challenge — 31-Day Inventory Online Learning
 
-每天早晨根据可获得的信息决定 order-up-to level `q_t`，当天结束后获得 sales / profit，
-再用于下一天决策。**严格避免 data leakage**（决策时不能使用当天或未来的 demand）。
+Each morning, decide the order-up-to level `q_t` using only the information available at that time; after the day ends, sales / profit are observed and used for the next day's decision. **Data leakage is strictly avoided** (today's or future demand must never be used at decision time).
 
-## 代码结构
+## Requirements
+
+Python 3.9+ and three libraries: `pip install numpy pandas matplotlib`
+
+## Project Structure
 
 ```text
 code area/
-├── main.py                  # 完整流程入口
-├── config.py                # 全局参数（价格、成本、动作集、算法参数等）
+├── main.py                  # Full pipeline entry point
+├── config.py                # Global parameters (price, costs, action set, algorithm params, etc.)
 ├── environment/
-│   └── inventory_env.py     # 库存、销售、利润、状态更新
+│   └── inventory_env.py     # Inventory, sales, profit, state updates
 ├── algorithms/
-│   ├── base_algorithm.py    # 统一 Interface
+│   ├── __init__.py          # ALGORITHM_REGISTRY
+│   ├── base_algorithm.py    # Unified interface
 │   ├── ucb.py
 │   ├── epsilon_greedy.py
 │   └── gradient.py
 ├── optimization/
-│   └── parameter_tuning.py  # Grid Search / Random Search 自动调参
+│   └── parameter_tuning.py  # Grid Search / Random Search automatic tuning
 ├── visualization/
-│   └── visualize.py         # 统一图表生成
+│   └── visualize.py         # Unified figure generation
 ├── experiments/
-│   ├── simulation.py        # 核心 31-day simulation 流程
+│   ├── simulation.py        # Core 31-day simulation flow
 │   ├── compare_algorithms.py
 │   └── run_tuning.py
 ├── data/
-│   └── daily_demand.csv
+│   └── daily_demand.csv     # Input: columns `date,demand`, 31 rows
 └── results/
-    ├── <algorithm>/          # 每个算法独立文件夹（ucb / epsilon_greedy / gradient ...）
+    ├── <algorithm>/          # Per-algorithm folder (ucb / epsilon_greedy / gradient ...)
     │   ├── daily_results.csv
-    │   └── figures/          # 该算法的 order_up_to / daily_profit / cumulative_profit 图
-    ├── comparison/           # 跨算法比较结果
+    │   └── figures/          # order_up_to / daily_profit / cumulative_profit figures for this algorithm
+    ├── comparison/           # Cross-algorithm comparison results
     │   ├── algorithm_comparison.csv
     │   ├── algorithm_comparison_curves.csv
     │   └── algorithm_comparison.png
-    └── tuning/               # 参数优化结果
+    └── tuning/               # Parameter tuning results
         └── parameter_tuning_<algorithm>.csv
 ```
 
-## 运行方式
+## How to Run
+
+Run everything from inside `code area` (the folder name contains a space, so quote it: `cd "code area"`).
 
 ```bash
-# 运行单个算法（31 天完整模拟）
+# Run a single algorithm (full 31-day simulation)
 python main.py --algorithm ucb
 python main.py --algorithm epsilon_greedy
 python main.py --algorithm gradient
 
-# 比较多个算法
+# Compare multiple algorithms
 python -m experiments.compare_algorithms
 
-# 参数优化（Grid / Random Search）
+# Parameter tuning (Grid / Random Search)
 python experiments/run_tuning.py --algorithm ucb --method grid
 python experiments/run_tuning.py --algorithm gradient --method random --n-trials 20
 ```
 
-## 关键假设（可在 config.py 中修改）
+## Key Assumptions (configurable in config.py)
 
-* 订货提前期 `LEAD_TIME = 0`：当天下单当天到货，可用于当天销售。
-* 每日利润 = `price × sales − unit_cost × order_quantity − holding_cost × inventory_after`。
-* 未满足的 demand 视为 lost sales（只损失潜在收入，无额外缺货罚款）。
+* Order lead time `LEAD_TIME = 0`: units ordered today arrive today and can be sold today.
+* Daily profit = `price × sales − unit_cost × order_quantity − holding_cost × inventory_after`
+  — revenue on what sold, minus the cost of what was ordered, minus a charge on whatever is left overnight.
+* Order quantity = `max(0, q_t − inventory_before)` — you only buy the gap up to your target level, never returning stock.
+* Sales = `min(demand, inventory_before + order_quantity)` — you can't sell more than customers want, or more than you have.
+* Unmet demand is treated as lost sales (only the potential revenue is lost; no extra stockout penalty).
 
-## 输出说明
+Current values: `PRICE = 10.0`, `UNIT_COST = 4.0`, `HOLDING_COST = 1.0`, `INITIAL_INVENTORY = 0`, `N_DAYS = 31`, `ACTION_SET = 0, 1000, ..., 50000`, `RANDOM_SEED = 42`.
 
-* `results/<algorithm>/daily_results.csv`：该算法的逐日结果
-  （day, inventory_before, order_up_to, order_quantity, demand, sales,
-  inventory_after, profit, cumulative_profit）。
-* `results/<algorithm>/figures/`：该算法的 order-up-to level、daily profit、
-  cumulative profit 图。
-* `results/comparison/algorithm_comparison.csv`：算法比较（total / average profit + rank）。
-* `results/tuning/parameter_tuning_<algorithm>.csv`：所有测试过的参数组合及排名。
-* `results/comparison/algorithm_comparison.png`：多算法累计利润对比图。
+## Output Files
 
-每次运行（main / comparison / tuning）都会额外打印**利润上限百分比**：
-完全预知（每天令 `q_t = demand`）时的理论上限
-`upper = Σ (price − unit_cost) × demand`，算法利润占该上限的百分比即
-`pct_of_upper`（调参 CSV 中也会保存该列）。
+* `results/<algorithm>/daily_results.csv`: daily results for that algorithm
+  (day, inventory_before, order_up_to, order_quantity, demand, sales,
+  inventory_after, profit, cumulative_profit).
+* `results/<algorithm>/figures/`: order-up-to level, daily profit, and
+  cumulative profit figures for that algorithm.
+* `results/comparison/algorithm_comparison.csv`: algorithm comparison
+  (total / average profit + rank).
+* `results/tuning/parameter_tuning_<algorithm>.csv`: all tested parameter
+  combinations with rankings.
+* `results/comparison/algorithm_comparison.png`: cumulative profit
+  comparison across algorithms.
 
-## 扩展新算法
+Every run (main / comparison / tuning) also prints the **percentage of the profit upper bound**: the theoretical upper bound under full foresight (setting `q_t = demand` every day) is
+`upper = Σ (price − unit_cost) × demand`, and the algorithm's profit as a percentage of that bound is `pct_of_upper` (also saved as a column in the tuning CSV). With the current dataset `upper = 4,014,930`. No online algorithm reaches 100%, since it must learn from the past while the bound already knows the future.
 
-1. 在 `algorithms/` 中新增文件，继承 `BaseAlgorithm`
-   （实现 `select_action(state, available_actions)` 与 `update(observation)`）。
-2. 在 `algorithms/__init__.py` 的 `ALGORITHM_REGISTRY` 中注册。
-3. 在 `config.py` 的 `ALGORITHM_PARAMS` 中加入默认参数。
+## Extending with a New Algorithm
 
-无需修改核心 simulation 代码。
+1. Add a new file in `algorithms/` inheriting from `BaseAlgorithm`
+   (set a `name` class attribute, then implement `select_action(state, available_actions=None)` and `update(observation)`).
+2. Register it in `ALGORITHM_REGISTRY` in `algorithms/__init__.py`.
+3. Add default parameters to `ALGORITHM_PARAMS` in `config.py` — the keys are passed as keyword arguments to your `__init__`, so the names must match.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `ModuleNotFoundError: No module named 'algorithms'` | You ran `python experiments/compare_algorithms.py`. Use `python -m experiments.compare_algorithms` from inside `code area` |
+| `ModuleNotFoundError: No module named 'pandas'` | `pip install numpy pandas matplotlib` |
+| `cd: too many arguments` | The folder name has a space — use `cd "code area"` |
+| `ValueError: ... must contain the columns: date, demand` | The header row in `daily_demand.csv` must be exactly `date,demand` |
+| `ValueError: Not enough demand data` | The CSV has fewer rows than `N_DAYS` |
+| `KeyError: Unknown algorithm '...'` | Names are exactly `ucb`, `epsilon_greedy`, `gradient` |
+| `PermissionError` writing results | Close the CSV in Excel and re-run |
+| Results differ between runs | Pass the same `--seed`. Note `compare_algorithms` averages 3 runs by default |
