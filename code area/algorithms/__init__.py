@@ -1,7 +1,6 @@
-"""Algorithms module.
+"""算法模块。
 
-Registers all algorithms in one place. Adding a new algorithm only
-requires registering it here — no changes to the core simulation.
+统一注册所有算法，新增算法时只需在此注册，无需修改核心 simulation。
 """
 from algorithms.base_algorithm import BaseAlgorithm
 from algorithms.epsilon_greedy import EpsilonGreedy
@@ -16,10 +15,10 @@ ALGORITHM_REGISTRY = {
 
 
 def create_algorithm(name: str, action_set, params: dict, seed: int = None) -> BaseAlgorithm:
-    """Create an algorithm instance by name and parameters (reproducible)."""
+    """根据名称和参数创建算法实例（可复现）。"""
     if name not in ALGORITHM_REGISTRY:
         raise KeyError(
-            f"Unknown algorithm '{name}'. Available: {sorted(ALGORITHM_REGISTRY)}"
+            f"未知算法 '{name}'，可选：{sorted(ALGORITHM_REGISTRY)}"
         )
     import numpy as np
 

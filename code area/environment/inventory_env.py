@@ -1,12 +1,10 @@
-"""Inventory environment module.
+"""库存环境模块。
 
-The Environment is solely responsible for: inventory, order quantity,
-sales, ending inventory, revenue, cost, holding cost, daily profit,
-and state updates.
+Environment 统一负责：库存、订货量、销售、期末库存、收入、成本、
+持有成本、每日利润与状态更新。
 
-Core constraint: demand is used only inside the Environment and must
-never be exposed to the Algorithm before its decision (strictly no
-data leakage).
+核心限制：demand 只能被 Environment 内部使用，
+绝不能在 decision 之前暴露给 Algorithm（严格避免 data leakage）。
 """
 from __future__ import annotations
 
@@ -16,16 +14,13 @@ from typing import Dict, List, Optional
 
 
 class InventoryEnv:
-    """31-day inventory management environment.
+    """31 天库存管理环境。
 
-    Daily flow:
-        The algorithm selects an order-up-to level q_t based on the state
-        (information available before the decision)
-        -> the Environment computes the order quantity
-        -> the Environment computes sales / ending inventory / daily profit
-        from the demand
-        -> returns an observation (post-decision information, safe to pass
-        to algorithm.update)
+    每天流程：
+        算法根据 state（决策前可获得的信息）选择 order-up-to level q_t
+        → Environment 计算 order quantity
+        → Environment 根据 demand 计算 sales / ending inventory / daily profit
+        → 返回 observation（决策之后的信息，可以交给算法用于更新）
     """
 
     def __init__(
@@ -42,7 +37,7 @@ class InventoryEnv:
             raise ValueError("n_days must be positive")
         if len(demand) < n_days:
             raise ValueError(
-                f"Not enough demand data: need {n_days} days, got {len(demand)}"
+                f"demand 数据不足：需要 {n_days} 天，实际只有 {len(demand)} 天"
             )
         if any(
             not isinstance(value, Real)
@@ -68,40 +63,39 @@ class InventoryEnv:
         self.lead_time = int(lead_time)
         self.n_days = int(n_days)
 
-        self.day = 0                 # current decision day (1-based)
+        self.day = 0                 # 当前即将进行的决策日（1-based）
         self.inventory = int(initial_inventory)
         self._done = False
         self._last_record: Optional[Dict] = None
 
     # ------------------------------------------------------------------
-    # Information available BEFORE the decision (never today's/future demand)
+    # 决策前可获得的信息（绝不含当天/未来 demand）
     # ------------------------------------------------------------------
     def get_state(self) -> Dict:
-        """Return the information the algorithm is allowed to see."""
+        """返回算法决策时允许看到的信息。"""
         return {
             "day": self.day,
             "inventory_before": self.inventory,
         }
 
     # ------------------------------------------------------------------
-    # One-day execution
+    # 单日执行
     # ------------------------------------------------------------------
     def step(self, order_up_to: float) -> Dict:
-        """Execute one day.
+        """执行一天。
 
         Parameters
         ----------
-        order_up_to : the order-up-to level q_t chosen by the algorithm today
+        order_up_to : 当天算法选择的 order-up-to level q_t
 
         Returns
         -------
-        observation : post-decision information (safe to pass to
-            algorithm.update)
+        observation : 决策之后才能获得的信息（可安全交给 algorithm.update）
         """
         if self._done:
-            raise RuntimeError("Simulation has finished; call reset() first.")
+            raise RuntimeError("Simulation 已经结束，请先调用 reset()。")
         if self.day < 1 or self.day > self.n_days:
-            raise RuntimeError("Invalid day state; call reset() first.")
+            raise RuntimeError("非法的 day 状态，请先调用 reset()。")
         if (
             isinstance(order_up_to, bool)
             or not isinstance(order_up_to, Real)
@@ -114,24 +108,24 @@ class InventoryEnv:
         order_up_to = int(order_up_to)
         inventory_before = self.inventory
 
-        # 1. Compute the order quantity from the order-up-to level
+        # 1. 根据 order-up-to level 计算订货量
         order_quantity = max(0, order_up_to - inventory_before)
 
-        # 2. Zero lead time: today's order is available for today's sales
+        # 2. 提前期为 0：当天订货可用于当天销售
         available = inventory_before + order_quantity
 
-        # 3. Sales (demand is used only inside the Environment)
+        # 3. 销售（demand 只在 Environment 内部使用）
         demand_today = self._demand[self.day - 1]
         sales = min(demand_today, available)
         inventory_after = available - sales
 
-        # 4. Profit computation (encapsulated entirely in the Environment)
+        # 4. 利润计算（统一封装在 Environment 中）
         revenue = self.price * sales
         cost = self.unit_cost * order_quantity
         holding = self.holding_cost * inventory_after
         profit = revenue - cost - holding
 
-        # 5. Update state
+        # 5. 更新状态
         self.inventory = inventory_after
         # Safe policy-facing observation. True demand is intentionally omitted:
         # after a stockout, sales reveal only a lower bound on demand.
@@ -147,7 +141,7 @@ class InventoryEnv:
         # Full record is kept separately for evaluation and result reporting.
         self._last_record = {**observation, "demand": demand_today}
 
-        # Advance to the next day
+        # 推进到下一天
         if self.day >= self.n_days:
             self._done = True
         else:
@@ -165,10 +159,10 @@ class InventoryEnv:
         return dict(self._last_record)
 
     # ------------------------------------------------------------------
-    # Lifecycle
+    # 生命周期
     # ------------------------------------------------------------------
     def reset(self) -> Dict:
-        """Reset the environment for a fresh 31-day simulation."""
+        """重置环境，开始新一轮 31 天模拟。"""
         self.day = 1
         self.inventory = int(self.initial_inventory)
         self._done = False
@@ -180,13 +174,13 @@ class InventoryEnv:
         return self._done
 
     # ------------------------------------------------------------------
-    # Theoretical upper bound (clairvoyant)
+    # 理论上限（完全预知）
     # ------------------------------------------------------------------
     def profit_upper_bound(self) -> float:
-        """Theoretical profit upper bound with full foresight (q_t = demand).
+        """完全预知（每次都令 q_t = demand）时的利润理论上限。
 
-        Sales equal demand exactly every day and ending inventory is 0:
-            profit_upper = sum((price - unit_cost) * demand_t)
-        No lost sales, no holding cost. No online algorithm can exceed this.
+        此时每天销售恰好等于 demand、期末库存为 0：
+            profit_upper = Σ (price - unit_cost) * demand_t
+        无缺货损失、无持有成本。任何在线算法都无法超过该值。
         """
         return float(sum((self.price - self.unit_cost) * d for d in self._demand))

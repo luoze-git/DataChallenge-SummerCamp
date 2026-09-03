@@ -1,8 +1,7 @@
-"""Gradient algorithm (gradient bandit / policy-gradient style).
+"""Gradient Algorithm（gradient bandit / policy-gradient 风格）。
 
-Supports: preferences H, probabilities pi (softmax), learning rate
-alpha, and a reward baseline. All parameters are passed in externally,
-never hard-coded.
+支持：preference H、probability π（softmax）、learning rate α、
+reward baseline。参数均从外部传入，不在算法内部 hard-code。
 """
 from __future__ import annotations
 
@@ -35,7 +34,7 @@ class GradientBandit(BaseAlgorithm):
     # ------------------------------------------------------------------
     def _softmax(self, idx) -> np.ndarray:
         h = np.array([self.preferences[i] for i in idx])
-        h = h - h.max()  # numerical stability
+        h = h - h.max()  # 数值稳定
         e = np.exp(h)
         return e / e.sum()
 
@@ -56,18 +55,18 @@ class GradientBandit(BaseAlgorithm):
         idx = self.action_index[observation["order_up_to"]]
         reward = float(observation["profit"]) / self.reward_scale
 
-        # Reward baseline (mean of all observed rewards)
+        # reward baseline（所有已观察 reward 的均值）
         baseline = 0.0
         if self.use_baseline:
             self._baseline_sum += reward
             self._baseline_count += 1
             baseline = self.baseline
 
-        # Update preferences only for today's available actions
-        # (keeps the action set consistent)
+        # 只更新本日可选动作的偏好（保持动作集合一致性）
+        actions = self.actions
         pi = self._softmax(range(self.n_actions))
         indicator = np.zeros(self.n_actions)
         indicator[idx] = 1.0
-        # d log pi(a_t) / d H : onehot - pi
+        # ∂log π(a_t)/∂H : onehot - π
         grad = indicator - pi
         self.preferences += self.alpha * (reward - baseline) * grad

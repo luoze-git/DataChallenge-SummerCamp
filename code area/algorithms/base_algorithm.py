@@ -1,14 +1,13 @@
-"""Unified algorithm interface.
+"""算法统一 Interface。
 
-All algorithms must inherit from BaseAlgorithm. The main flow
-(main / comparison / tuning) depends only on this interface and knows
-nothing about the internal implementation:
+所有算法必须继承 BaseAlgorithm，主流程（main / comparison / tuning）
+只依赖该接口，不关心算法内部实现：
 
     action = algorithm.select_action(state, available_actions)
     algorithm.update(observation)
 
-To add a new algorithm, just add a file in algorithms/ and register it
-in ALGORITHM_REGISTRY (algorithms/__init__.py).
+新增算法时只需在 algorithms/ 中增加一个文件并在
+algorithms/__init__.py 的 ALGORITHM_REGISTRY 中注册。
 """
 from __future__ import annotations
 
@@ -18,7 +17,7 @@ import numpy as np
 
 
 class BaseAlgorithm:
-    """Unified interface for all online learning algorithms."""
+    """所有在线学习算法的统一接口。"""
 
     name = "base"
 
@@ -33,36 +32,34 @@ class BaseAlgorithm:
         self.rng = rng if rng is not None else np.random.default_rng()
 
     # ------------------------------------------------------------------
-    # Interface to implement
+    # 必须实现的接口
     # ------------------------------------------------------------------
     def select_action(self, state: Dict, available_actions: Optional[Iterable] = None):
-        """Select an order-up-to level based on the pre-decision state.
+        """根据决策前可获得的 state 选择一个 order-up-to level。
 
-        Note: the state must not contain today's/future demand
-        (data leakage is forbidden).
+        注意：state 中不允许包含当天/未来的 demand（data leakage 禁止）。
         """
         raise NotImplementedError
 
     def update(self, observation: Dict) -> None:
-        """Update internal state from the post-decision observation
-        returned by the Environment.
+        """根据决策后 Environment 返回的 observation 更新内部状态。
 
-        Actual demand is intentionally absent: after a stockout, only sales
-        (a lower bound on demand) are observable.
+        observation 不包含真实 demand：缺货时只能观察到 sales，
+        它只是 demand 的下界。
         """
         raise NotImplementedError
 
     # ------------------------------------------------------------------
-    # Shared utilities
+    # 通用工具
     # ------------------------------------------------------------------
     def _resolve_actions(self, available_actions: Optional[Iterable]) -> List:
         actions = list(available_actions) if available_actions is not None else self.actions
         if not actions:
-            raise ValueError("available_actions must not be empty")
+            raise ValueError("available_actions 不能为空")
         return actions
 
     def _argmax_random(self, values) -> int:
-        """Argmax with random tie-breaking (reproducible)."""
+        """argmax，平局时随机选择（保证可复现）。"""
         values = np.asarray(values, dtype=float)
         best = np.flatnonzero(values == values.max())
         return int(self.rng.choice(best))

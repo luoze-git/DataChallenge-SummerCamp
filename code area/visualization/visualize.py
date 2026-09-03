@@ -1,6 +1,6 @@
 """统一可视化模块。
 
-所有图表在此生成并保存到 results/figures/。
+所有图表均在此生成，并保存到 results 各目录。
 """
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Dict
 
 import matplotlib
 
-matplotlib.use("Agg")  # 无界面环境下也能保存图片
+matplotlib.use("Agg")  # 无显示环境下也可保存图片
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -26,7 +26,7 @@ def _save(fig, filename: str, out_dir: Path) -> Path:
 
 
 def plot_order_up_to(df: pd.DataFrame, algorithm_name: str = "") -> Path:
-    """① Daily Order-up-to Level: X: Day 1–31, Y: q_t"""
+    """(1) Daily Order-up-to Level：X: Day 1-31，Y: q_t"""
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.step(df["day"], df["order_up_to"], where="mid", marker="o", color="tab:blue")
     ax.set_xlabel("Day")
@@ -37,7 +37,7 @@ def plot_order_up_to(df: pd.DataFrame, algorithm_name: str = "") -> Path:
 
 
 def plot_daily_profit(df: pd.DataFrame, algorithm_name: str = "") -> Path:
-    """② Daily Profit: X: Day, Y: Daily Profit"""
+    """(2) Daily Profit：X: Day，Y: 每日利润"""
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.bar(df["day"], df["profit"], color="tab:green", alpha=0.8)
     ax.axhline(0, color="black", linewidth=0.8)
@@ -49,7 +49,7 @@ def plot_daily_profit(df: pd.DataFrame, algorithm_name: str = "") -> Path:
 
 
 def plot_cumulative_profit(df: pd.DataFrame, algorithm_name: str = "") -> Path:
-    """③ Cumulative Profit: X: Day, Y: Cumulative Profit"""
+    """(3) Cumulative Profit：X: Day，Y: 累计利润"""
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(df["day"], df["cumulative_profit"], marker="o", color="tab:red")
     ax.set_xlabel("Day")
@@ -61,12 +61,14 @@ def plot_cumulative_profit(df: pd.DataFrame, algorithm_name: str = "") -> Path:
 
 def plot_algorithm_comparison(summary: pd.DataFrame = None,
                               curves: pd.DataFrame = None) -> Path:
-    """④ Algorithm Comparison：多个算法的 cumulative profit 放在同一张图中。
+    """(4) Algorithm Comparison：多个算法的 cumulative profit 对比图。
 
     Parameters
     ----------
-    summary : results/comparison/algorithm_comparison.csv 的内容（总利润对比）
-    curves  : results/comparison/algorithm_comparison_curves.csv 的内容（累计利润曲线）
+    summary : results/comparison/algorithm_comparison.csv 的内容
+              （total profit 对比）
+    curves  : results/comparison/algorithm_comparison_curves.csv 的内容
+              （cumulative profit 曲线）
     """
     if curves is None:
         curves = pd.read_csv(COMPARISON_DIR / "algorithm_comparison_curves.csv")

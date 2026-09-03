@@ -1,8 +1,7 @@
-"""UCB (Upper Confidence Bound) algorithm.
+"""UCB (Upper Confidence Bound) 算法。
 
-Supports: action value estimation (Q), action counts, the exploration
-term, and the parameter c. All parameters are passed in externally
-(config / tuning), never hard-coded inside the algorithm.
+支持：action value estimation (Q)、action count、exploration term、参数 c。
+参数均从外部传入（config / tuning），不在算法内部 hard-code。
 """
 from __future__ import annotations
 
@@ -33,7 +32,7 @@ class UCB(BaseAlgorithm):
         actions = self._resolve_actions(available_actions)
         idx = [self.action_index[a] for a in actions]
 
-        # Explore never-played actions first (UCB score = +inf; ties broken randomly)
+        # 从未被选择过的动作优先探索（UCB 值视为无穷，随机打破平局）
         unplayed = [i for i in idx if self.counts[i] == 0]
         if unplayed:
             return actions[self.rng.integers(len(unplayed))]
@@ -49,5 +48,5 @@ class UCB(BaseAlgorithm):
         idx = self.action_index[observation["order_up_to"]]
         reward = float(observation["profit"])
         self.counts[idx] += 1
-        # Incremental mean update
+        # 增量式均值更新
         self.values[idx] += (reward - self.values[idx]) / self.counts[idx]

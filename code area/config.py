@@ -1,73 +1,68 @@
-"""Global configuration module.
+"""全局配置模块。
 
-All important parameters are centralized here to avoid hard-coding
-values scattered across the codebase.
+所有重要参数集中在此，避免 hard-code 散落在代码各处。
 """
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
-# ---------------- Economic parameters ----------------
-PRICE = 10.0            # selling price per unit
-UNIT_COST = 4.0         # procurement cost per unit
-HOLDING_COST = 1.0      # holding cost per unit of ending inventory
+# ---------------- 经济参数 ----------------
+PRICE = 10.0            # 单位售价
+UNIT_COST = 4.0         # 单位成本
+HOLDING_COST = 1.0      # 单位期末库存持有成本
 
-# ---------------- Environment settings ----------------
-INITIAL_INVENTORY = 0   # starting inventory
-LEAD_TIME = 0           # order lead time (0 = ordered units arrive the same day and can be sold)
+# ---------------- 环境设置 ----------------
+INITIAL_INVENTORY = 0   # 期初库存
+LEAD_TIME = 0           # 订货提前期（0 表示当天下单当天到货，可用于销售）
 
-# ---------------- Planning horizon & action set ----------------
+# ---------------- 规划期与动作集 ----------------
 N_DAYS = 31
 ACTION_SET = list(range(0, 50000 + 1, 1000))  # order-up-to level: 0,1000,...,50000
 
-# ---------------- Reproducibility ----------------
+# ---------------- 复现性 ----------------
 RANDOM_SEED = 42
 
-# ---------------- Default algorithm parameters ----------------
-# Algorithm parameters are configured here and can be overridden via
-# command line / parameter tuning.
+# ---------------- 算法默认参数 ----------------
+# 算法参数统一在此配置，也可通过命令行 / tuning 覆盖
 ALGORITHM_PARAMS = {
     "ucb": {
-        "c": 2000.0,           # exploration coefficient
-        "optimistic_init": 0.0  # optimistic initialization of Q values
+        "c": 2000.0,           # exploration 系数
+        "optimistic_init": 0.0  # Q 值乐观初始化
     },
     "epsilon_greedy": {
         "epsilon": 0.1,
         "optimistic_init": 0.0
     },
     "gradient": {
-        "alpha": 0.5,           # learning rate
-        "use_baseline": True,   # whether to use a reward baseline
-        "reward_scale": 10000.0 # reward scaling (profits are large; keeps preferences stable)
+        "alpha": 0.5,           # 学习率
+        "use_baseline": True,   # 是否使用 reward baseline
+        "reward_scale": 10000.0 # reward 缩放（利润数值较大，避免偏好值爆炸）
     },
 }
 
-# ---------------- Paths ----------------
+# ---------------- 路径 ----------------
 DATA_PATH = PROJECT_ROOT / "data" / "daily_demand.csv"
 RESULTS_DIR = PROJECT_ROOT / "results"
-COMPARISON_DIR = RESULTS_DIR / "comparison"   # cross-algorithm comparison results
-TUNING_DIR = RESULTS_DIR / "tuning"           # parameter tuning results
+COMPARISON_DIR = RESULTS_DIR / "comparison"   # 跨算法比较结果
+TUNING_DIR = RESULTS_DIR / "tuning"           # 参数优化结果
 TABLES_DIR = RESULTS_DIR / "tables"
 
 
 def ensure_dirs() -> None:
-    """Ensure the shared result directories exist.
-
-    Per-algorithm directories are created on demand in algorithm_dir().
-    """
+    """确保公共结果目录存在（单算法目录按需在 algorithm_dir 中创建）。"""
     for d in (COMPARISON_DIR, TUNING_DIR, TABLES_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
 
 def algorithm_dir(algorithm_name: str) -> Path:
-    """Per-algorithm result directory: results/<algorithm>/ (auto-created)."""
+    """单个算法的结果目录：results/<algorithm>/（自动创建）。"""
     d = RESULTS_DIR / algorithm_name
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def algorithm_figures_dir(algorithm_name: str) -> Path:
-    """Per-algorithm figure directory: results/<algorithm>/figures/ (auto-created)."""
+    """单个算法的图表目录：results/<algorithm>/figures/（自动创建）。"""
     d = algorithm_dir(algorithm_name) / "figures"
     d.mkdir(parents=True, exist_ok=True)
     return d

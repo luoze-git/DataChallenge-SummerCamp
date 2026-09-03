@@ -1,7 +1,7 @@
-"""完整流程入口。
+"""完整流程主入口。
 
-流程：Load Config → Load Data → Create Environment → Create Algorithm
-      → Run 31 Days → Save Results → Generate Visualization
+流程：Load Config -> Load Data -> Create Environment -> Create Algorithm
+      -> Run 31 Days -> Save Results -> Generate Visualization
 
 用法：
     python main.py --algorithm ucb
@@ -48,19 +48,19 @@ from visualization.visualize import (
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Data Challenge: 31-day inventory online learning")
+    parser = argparse.ArgumentParser(description="Data Challenge: 31 天库存在线学习")
     parser.add_argument("--algorithm", default="ucb", choices=sorted(ALGORITHM_REGISTRY),
                         help="使用的算法")
-    parser.add_argument("--seed", type=int, default=RANDOM_SEED, help="随机种子（可复现）")
+    parser.add_argument("--seed", type=int, default=RANDOM_SEED, help="随机种子（复现）")
     parser.add_argument("--no-figures", action="store_true", help="不生成图表")
     args = parser.parse_args()
 
     ensure_dirs()
 
-    # 1. Load Data
+    # 1. 读取数据
     demand_df = load_demand(DATA_PATH)
 
-    # 2. Create Environment（库存/利润计算全部封装在 Environment 中）
+    # 2. 创建环境（库存/利润逻辑完全封装在 Environment 内）
     env = InventoryEnv(
         demand=demand_df["demand"].tolist(),
         price=PRICE,
@@ -71,32 +71,32 @@ def main() -> None:
         n_days=N_DAYS,
     )
 
-    # 3. Create Algorithm（参数来自 config，不 hard-code）
+    # 3. 创建算法（参数来自 config，不 hard-code）
     params = dict(ALGORITHM_PARAMS.get(args.algorithm, {}))
     algorithm = create_algorithm(args.algorithm, ACTION_SET, params, seed=args.seed)
     print(f"Algorithm: {args.algorithm} | params: {params} | seed: {args.seed}")
 
-    # 4. Run 31 Days
+    # 4. 运行 31 天
     records = run_simulation(algorithm, env)
 
-    # 5. Save Results
+    # 5. 保存结果
     df = records_to_dataframe(records)
     out_csv = save_daily_results(df, args.algorithm)
     total = df["profit"].sum()
-    print("\n===== 31-day simulation summary =====")
+    print("\n===== 31 天模拟汇总 =====")
     print(df.to_string(index=False))
-    print(f"\nTotal profit       : {total:,.2f}")
-    print(f"Average daily profit: {total / N_DAYS:,.2f}")
+    print(f"\n总利润   : {total:,.2f}")
+    print(f"日均利润 : {total / N_DAYS:,.2f}")
     report_profit_vs_upper(float(total), env, label=args.algorithm)
-    print(f"Daily results saved: {out_csv}")
+    print(f"每日结果已保存: {out_csv}")
 
-    # 6. Generate Visualization
+    # 6. 生成可视化
     if not args.no_figures:
         f1 = plot_order_up_to(df, args.algorithm)
         f2 = plot_daily_profit(df, args.algorithm)
         f3 = plot_cumulative_profit(df, args.algorithm)
         for f in (f1, f2, f3):
-            print(f"Figure saved: {f}")
+            print(f"图表已保存: {f}")
 
 
 if __name__ == "__main__":
