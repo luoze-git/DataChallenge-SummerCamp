@@ -1,0 +1,6 @@
+algorithm,search_method,params,total_profit,average_daily_profit,pct_of_upper,rank
+epsilon_greedy,grid,"{""epsilon"": 0.3, ""optimistic_init"": 0.0}",3587032.0,115710.70967741935,89.34232975419248,1
+epsilon_greedy,grid,"{""epsilon"": 0.2, ""optimistic_init"": 0.0}",3583032.0,115581.67741935483,89.24270161621747,2
+epsilon_greedy,grid,"{""epsilon"": 0.1, ""optimistic_init"": 0.0}",3491016.0,112613.41935483871,86.95085593024038,3
+epsilon_greedy,grid,"{""epsilon"": 0.02, ""optimistic_init"": 0.0}",3490793.0,112606.2258064516,86.94530166154827,4
+epsilon_greedy,grid,"{""epsilon"": 0.05, ""optimistic_init"": 0.0}",3474774.0,112089.48387096774,86.54631587599285,5
