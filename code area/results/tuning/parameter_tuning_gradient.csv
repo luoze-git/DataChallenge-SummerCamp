@@ -1,0 +1,6 @@
+algorithm,search_method,params,total_profit,average_daily_profit,pct_of_upper,rank
+gradient,grid,"{""alpha"": 2.0, ""reward_scale"": 10000.0, ""use_baseline"": true}",3405463.0,109853.64516129032,84.8199844081964,1
+gradient,grid,"{""alpha"": 1.0, ""reward_scale"": 10000.0, ""use_baseline"": true}",3404463.0,109821.3870967742,84.79507737370265,2
+gradient,grid,"{""alpha"": 0.5, ""reward_scale"": 10000.0, ""use_baseline"": true}",3173639.0,102375.45161290323,79.04593604371682,3
+gradient,grid,"{""alpha"": 0.25, ""reward_scale"": 10000.0, ""use_baseline"": true}",3098305.0,99945.32258064517,77.1695895071645,4
+gradient,grid,"{""alpha"": 0.1, ""reward_scale"": 10000.0, ""use_baseline"": true}",3063833.0,98833.32258064517,76.31099421409589,5

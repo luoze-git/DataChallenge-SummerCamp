@@ -30,13 +30,13 @@ ALGORITHM_PARAMS = {
         "optimistic_init": 0.0  # Q 值乐观初始化
     },
     "epsilon_greedy": {
-        "epsilon": 0.1,
+        "epsilon": 0.3,
         "optimistic_init": 0.0
     },
     "gradient": {
-        "alpha": 0.5,           # 学习率
-        "use_baseline": True,   # 是否使用 reward baseline
-        "reward_scale": 10000.0 # reward 缩放（利润数值较大，避免偏好值爆炸）
+        "alpha": 2.0,  # 学习率
+        "reward_scale": 10000.0,  # reward 缩放（利润数值较大，避免偏好值爆炸）
+        "use_baseline": True  # 是否使用 reward baseline
     },
     # EWF（依据 1234.pdf；本仓库为 censored 环境：observation 不含 demand）
     "ewf": {
