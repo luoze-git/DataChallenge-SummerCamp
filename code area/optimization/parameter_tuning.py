@@ -11,10 +11,13 @@ constraint（见 experiments/simulation.py），不会因为调参而看到未�
 """
 from __future__ import annotations
 
+import difflib
 import itertools
 import json
 import random
+import re
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Dict, List
 
 import pandas as pd
@@ -26,6 +29,8 @@ from experiments.simulation import (
     records_to_dataframe,
     report_profit_vs_upper,
 )
+
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.py"
 
 
 class BaseSearch(ABC):
@@ -127,3 +132,75 @@ def tune_parameters(
     out_path = TUNING_DIR / f"parameter_tuning_{algorithm_name}.csv"
     result.to_csv(out_path, index=False)
     return result
+
+
+def apply_best_params(
+    algorithm_name: str,
+    best_params: Dict,
+    config_path = None,
+) -> None:
+    """把网格/随机搜索到的最佳参数回写到 config.py 的参数库 ALGORITHM_PARAMS。
+
+    - 只修改指定算法的参数块，其余内容不动；
+    - 已存在参数的行内注释会被保留；
+    - 写入前在控制台打印 unified diff；
+    - 回写成功后同步更新当前进程内的 config.ALGORITHM_PARAMS。
+
+    用法（通常由 experiments/run_tuning.py 的 --apply-best 开关调用）：
+        apply_best_params("ucb", {"c": 5000.0, "optimistic_init": 0.0})
+    """
+    import config as config_module
+
+    config_path = Path(config_path) if config_path else CONFIG_PATH
+    text = config_path.read_text(encoding="utf-8")
+
+    # 定位该算法在 ALGORITHM_PARAMS 中的参数块，例如：
+    #     "ucb": {
+    #         "c": 2000.0,           # exploration 系数
+    #         "optimistic_init": 0.0
+    #     },
+    pattern = re.compile(
+        r'(?P<head>    "%s": \{\n)(?P<body>.*?)(?P<tail>\n    \},)'
+        % re.escape(algorithm_name),
+        re.DOTALL,
+    )
+    match = pattern.search(text)
+    if match is None:
+        raise KeyError(f"config.py 中找不到算法 '{algorithm_name}' 的参数块")
+
+    # 解析旧参数块，记录每个 key 的行内注释
+    comments: Dict[str, str] = {}
+    for line in match.group("body").splitlines():
+        m = re.match(r'\s*"(\w+)":\s*[^#]+?(#.+)$', line)
+        if m:
+            comments[m.group(1)] = m.group(2).rstrip()
+
+    # 重新生成参数块（与原文件风格一致：除最后一行外均带逗号）
+    new_lines = []
+    items = list(best_params.items())
+    for i, (key, value) in enumerate(items):
+        comma = "," if i < len(items) - 1 else ""
+        comment = f"  {comments[key]}" if key in comments else ""
+        new_lines.append(f'        "{key}": {value!r}{comma}{comment}')
+
+    old_block = match.group(0)
+    new_block = match.group("head") + "\n".join(new_lines) + match.group("tail")
+
+    # 打印 diff 供确认
+    diff = difflib.unified_diff(
+        old_block.splitlines(),
+        new_block.splitlines(),
+        fromfile=f"config.py (原)",
+        tofile=f"config.py (新)",
+        lineterm="",
+    )
+    print("\n===== 更新 config.py 参数库 =====")
+    print("\n".join(diff))
+
+    config_path.write_text(
+        text[: match.start()] + new_block + text[match.end():], encoding="utf-8"
+    )
+
+    # 同步更新内存中的参数库（无需重新 import）
+    config_module.ALGORITHM_PARAMS[algorithm_name] = dict(best_params)
+    print(f"✅ 算法 '{algorithm_name}' 的最佳参数已写入 config.py 并同步到内存")

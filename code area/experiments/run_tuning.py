@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -17,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from config import ALGORITHM_PARAMS
 from experiments.compare_algorithms import load_demand_by_config
-from optimization.parameter_tuning import tune_parameters
+from optimization.parameter_tuning import apply_best_params, tune_parameters
 
 
 def main() -> None:
@@ -30,6 +31,9 @@ def main() -> None:
     parser.add_argument("--n-trials", type=int, default=20,
                         help="random search 的试验次数")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--apply-best", action="store_true",
+                        help="调参结束后把最佳参数自动回写到 config.py 的 "
+                             "ALGORITHM_PARAMS（默认不回写，需手动复制）")
     args = parser.parse_args()
 
     # 默认搜索空间：围绕 config 中的默认值构造（可按需扩展）
@@ -70,6 +74,18 @@ def main() -> None:
     print(f"params: {best['params']}")
     print(f"total_profit: {best['total_profit']:.2f}")
     print(f"results saved to results/tuning/parameter_tuning_{args.algorithm}.csv")
+
+    if args.apply_best:
+        # 把 rank=1 的参数回写到 config.py 的 ALGORITHM_PARAMS（参数库），
+        # 之后 python main.py / compare_algorithms 就会自动使用新参数
+        apply_best_params(args.algorithm, json.loads(best["params"]))
+    else:
+        print(
+            "\n注意: config.py 参数库未修改。"
+            "\n  - 自动回写: 重新运行并加上 --apply-best"
+            "\n  - 手动更新: 把上面 params 里的值复制到 config.py 的 "
+            "ALGORITHM_PARAMS 中"
+        )
 
 
 if __name__ == "__main__":

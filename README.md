@@ -58,7 +58,49 @@ python -m experiments.compare_algorithms
 # Parameter tuning (Grid / Random Search)
 python experiments/run_tuning.py --algorithm ucb --method grid
 python experiments/run_tuning.py --algorithm gradient --method random --n-trials 20
+
+# Parameter tuning + write the best parameters back into config.py automatically
+python experiments/run_tuning.py --algorithm ucb --method grid --apply-best
 ```
+
+### Parameter Tuning Workflow
+
+Tuning never silently changes your configuration. The search itself only
+produces a ranked report; the best parameters reach the "parameter library"
+(`ALGORITHM_PARAMS` in `config.py`) only when you explicitly ask for it:
+
+1. **Run the search.** Every candidate combination is scored by an independent
+   31-day online simulation (no data leakage), and all results are ranked by
+   total profit:
+   ```bash
+   python experiments/run_tuning.py --algorithm ucb --method grid
+   ```
+
+2. **Inspect the results.** All tested combinations are saved to
+   `results/tuning/parameter_tuning_<algorithm>.csv` with columns
+   `params / total_profit / pct_of_upper / rank` (`rank = 1` is the best).
+   The winner is also printed to the console.
+
+3. **Apply the best parameters (opt-in).** Add `--apply-best` to write the
+   `rank = 1` parameters back into `ALGORITHM_PARAMS` in `config.py`:
+   ```bash
+   python experiments/run_tuning.py --algorithm ucb --method grid --apply-best
+   ```
+   What it does:
+   * prints a unified diff of the change before writing;
+   * keeps the inline comments of parameters that already existed;
+   * also updates `ALGORITHM_PARAMS` in the running process.
+
+4. **Run the final experiment.** `main.py` and `compare_algorithms` always
+   read `ALGORITHM_PARAMS` from `config.py`, so after step 3 they use the new
+   parameters automatically — no code changes needed:
+   ```bash
+   python main.py --algorithm ucb
+   ```
+
+If you prefer to stay in control, simply omit `--apply-best`: nothing is
+written to `config.py`, and you can copy the winning `params` JSON from the
+tuning CSV into `ALGORITHM_PARAMS` by hand.
 
 ## Key Assumptions (configurable in config.py)
 

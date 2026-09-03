@@ -1,0 +1,6 @@
+algorithm,search_method,params,total_profit,average_daily_profit,pct_of_upper,rank
+ucb,grid,"{""c"": 500.0, ""optimistic_init"": 0.0}",2782871.0,89770.03225806452,69.31306398866232,1
+ucb,grid,"{""c"": 1000.0, ""optimistic_init"": 0.0}",2782871.0,89770.03225806452,69.31306398866232,1
+ucb,grid,"{""c"": 2000.0, ""optimistic_init"": 0.0}",2782871.0,89770.03225806452,69.31306398866232,1
+ucb,grid,"{""c"": 5000.0, ""optimistic_init"": 0.0}",2782871.0,89770.03225806452,69.31306398866232,1
+ucb,grid,"{""c"": 10000.0, ""optimistic_init"": 0.0}",2782871.0,89770.03225806452,69.31306398866232,1
