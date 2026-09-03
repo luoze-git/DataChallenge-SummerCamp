@@ -11,6 +11,8 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
+
 # 保证以任意 cwd 运行时都能找到项目根目录的模块
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -37,17 +39,18 @@ def main() -> None:
     args = parser.parse_args()
 
     # 默认搜索空间：围绕 config 中的默认值构造（可按需扩展）
+    # 大规模版本：主参数取约 50 个合理范围内的取值（对数/线性均匀采样）
     default = ALGORITHM_PARAMS[args.algorithm]
     if args.algorithm == "ucb":
-        param_grid = {"c": [500.0, 1000.0, 2000.0, 5000.0, 10000.0],
+        param_grid = {"c": np.logspace(2, 5, 50).round(2).tolist(),  # 100 ~ 100000
                       "optimistic_init": [0.0]}
     elif args.algorithm == "epsilon_greedy":
-        param_grid = {"epsilon": [0.02, 0.05, 0.1, 0.2, 0.3],
+        param_grid = {"epsilon": np.linspace(0.0, 0.6, 50).round(4).tolist(),
                       "optimistic_init": [0.0]}
     elif args.algorithm == "ewf":
         # EWF / FSF（censored）：eta 学习率、gamma 探索、share_alpha(0→EWF, >0→FSF)
         # cost 只用 newsvendor：本环境不披露 demand，env_profit 口径不可用。
-        param_grid = {"eta": [1e-4, 3e-4, 1e-3, 3e-3, 5e-3, 1e-2],
+        param_grid = {"eta": np.logspace(-5, -1, 50).tolist(),  # 1e-5 ~ 0.1
                       "gamma": [0.0, 0.02, 0.05],
                       "share_alpha": [0.0, 1.0 / 31.0, 0.1],
                       "feedback": ["censored"],
@@ -55,8 +58,8 @@ def main() -> None:
                       "overage": [None],
                       "underage": [None]}
     else:  # gradient
-        param_grid = {"alpha": [0.1, 0.25, 0.5, 1.0, 2.0],
-                      "use_baseline": [True],
+        param_grid = {"alpha": np.logspace(-2, np.log10(20.0), 50).tolist(),
+                      "use_baseline": [True, False],
                       "reward_scale": [default["reward_scale"]]}
 
     demand_df = load_demand_by_config()

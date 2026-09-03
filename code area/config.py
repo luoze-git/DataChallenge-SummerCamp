@@ -26,29 +26,27 @@ RANDOM_SEED = 42
 # 算法参数统一在此配置，也可通过命令行 / tuning 覆盖
 ALGORITHM_PARAMS = {
     "ucb": {
-        "c": 2000.0,           # exploration 系数
+        "c": 100.0,  # exploration 系数
         "optimistic_init": 0.0  # Q 值乐观初始化
     },
     "epsilon_greedy": {
-        "epsilon": 0.3,
+        "epsilon": 0.0857,
         "optimistic_init": 0.0
     },
     "gradient": {
-        "alpha": 2.0,  # 学习率
+        "alpha": 3.1089553618622863,  # 学习率
         "reward_scale": 10000.0,  # reward 缩放（利润数值较大，避免偏好值爆炸）
         "use_baseline": True  # 是否使用 reward baseline
     },
     # EWF（依据 1234.pdf；本仓库为 censored 环境：observation 不含 demand）
     "ewf": {
-        # 默认值经 run_tuning 调优（多种子取均值后确定）。eta/gamma=None
-        # 会回退到论文 Theorem 1/2 的理论值；share_alpha>0 切换为 FSF 变体。
-        "eta": 0.0001,          # 学习率
-        "gamma": 0.0,           # 均匀探索率（论文 Eq.4 的 γ/N）
-        "share_alpha": 0.0,     # 0 → 纯 EWF；>0（如 1/N_DAYS）→ FSF 固定份额
-        "feedback": "censored", # 本环境只披露被审查的 sales（不披露 demand）
-        "cost": "newsvendor",   # 报童损失口径（censored 下唯一可用）
-        "overage": None,        # None → unit_cost + holding_cost
-        "underage": None,       # None → price − unit_cost
+        "cost": 'newsvendor',  # 报童损失口径（censored 下唯一可用）
+        "eta": 0.00042919342601287783,  # 学习率
+        "feedback": 'censored',  # 本环境只披露被审查的 sales（不披露 demand）
+        "gamma": 0.02,  # 均匀探索率（论文 Eq.4 的 γ/N）
+        "overage": None,  # None → unit_cost + holding_cost
+        "share_alpha": 0.03225806451612903,  # 0 → 纯 EWF；>0（如 1/N_DAYS）→ FSF 固定份额
+        "underage": None  # None → price − unit_cost
     },
 }
 
