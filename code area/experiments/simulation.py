@@ -33,12 +33,12 @@ def run_simulation(algorithm: BaseAlgorithm, env: InventoryEnv) -> List[Dict]:
         # 2. Environment 执行当天（订货、销售、利润、状态更新）
         observation = env.step(action)
 
-        # 3. 决策之后才把 observation 交给算法更新
+        # 3. 只把可观测的 observation 交给算法（不含真实 demand）
         algorithm.update(observation)
 
-        # 4. 记录
+        # 4. 完整 demand 仅用于评估和结果记录，不回传给算法
         cumulative_profit += observation["profit"]
-        record = dict(observation)
+        record = env.get_last_record()
         record["cumulative_profit"] = cumulative_profit
         records.append(record)
 

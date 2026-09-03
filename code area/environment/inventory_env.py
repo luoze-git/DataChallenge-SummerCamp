@@ -10,7 +10,9 @@ data leakage).
 """
 from __future__ import annotations
 
-from typing import Dict, List
+import math
+from numbers import Real
+from typing import Dict, List, Optional
 
 
 class InventoryEnv:
@@ -36,11 +38,29 @@ class InventoryEnv:
         lead_time: int = 0,
         n_days: int = 31,
     ) -> None:
+        if n_days <= 0:
+            raise ValueError("n_days must be positive")
         if len(demand) < n_days:
             raise ValueError(
                 f"Not enough demand data: need {n_days} days, got {len(demand)}"
             )
-        self.demand = list(demand[:n_days])
+        if any(
+            not isinstance(value, Real)
+            or not math.isfinite(float(value))
+            or float(value) < 0
+            or not float(value).is_integer()
+            for value in demand[:n_days]
+        ):
+            raise ValueError("demand must contain non-negative integer quantities")
+        if any(value < 0 for value in (price, unit_cost, holding_cost)):
+            raise ValueError("price, unit_cost, and holding_cost must be non-negative")
+        if initial_inventory < 0:
+            raise ValueError("initial_inventory must be non-negative")
+        if lead_time != 0:
+            raise ValueError("This assignment assumes lead_time=0")
+
+        # Private simulator input: never include this sequence in policy state.
+        self._demand = [int(value) for value in demand[:n_days]]
         self.price = float(price)
         self.unit_cost = float(unit_cost)
         self.holding_cost = float(holding_cost)
@@ -50,8 +70,8 @@ class InventoryEnv:
 
         self.day = 0                 # current decision day (1-based)
         self.inventory = int(initial_inventory)
-        self.pending_orders: Dict[int, int] = {}  # arrival day -> order quantity
         self._done = False
+        self._last_record: Optional[Dict] = None
 
     # ------------------------------------------------------------------
     # Information available BEFORE the decision (never today's/future demand)
@@ -82,24 +102,26 @@ class InventoryEnv:
             raise RuntimeError("Simulation has finished; call reset() first.")
         if self.day < 1 or self.day > self.n_days:
             raise RuntimeError("Invalid day state; call reset() first.")
+        if (
+            isinstance(order_up_to, bool)
+            or not isinstance(order_up_to, Real)
+            or not math.isfinite(float(order_up_to))
+            or float(order_up_to) < 0
+            or not float(order_up_to).is_integer()
+        ):
+            raise ValueError("order_up_to must be a non-negative integer level")
 
+        order_up_to = int(order_up_to)
         inventory_before = self.inventory
 
         # 1. Compute the order quantity from the order-up-to level
-        order_quantity = max(0, int(round(order_up_to)) - inventory_before)
+        order_quantity = max(0, order_up_to - inventory_before)
 
-        # 2. Order arrival (scheduled by lead time)
-        arrival_day = self.day + self.lead_time
-        if self.lead_time == 0:
-            available = inventory_before + order_quantity
-        else:
-            self.pending_orders[arrival_day] = (
-                self.pending_orders.get(arrival_day, 0) + order_quantity
-            )
-            available = inventory_before + self.pending_orders.pop(self.day, 0)
+        # 2. Zero lead time: today's order is available for today's sales
+        available = inventory_before + order_quantity
 
         # 3. Sales (demand is used only inside the Environment)
-        demand_today = self.demand[self.day - 1]
+        demand_today = self._demand[self.day - 1]
         sales = min(demand_today, available)
         inventory_after = available - sales
 
@@ -111,16 +133,19 @@ class InventoryEnv:
 
         # 5. Update state
         self.inventory = inventory_after
+        # Safe policy-facing observation. True demand is intentionally omitted:
+        # after a stockout, sales reveal only a lower bound on demand.
         observation = {
             "day": self.day,
             "inventory_before": inventory_before,
             "order_up_to": order_up_to,
             "order_quantity": order_quantity,
-            "demand": demand_today,          # observable only after the decision
             "sales": sales,
             "inventory_after": inventory_after,
             "profit": profit,
         }
+        # Full record is kept separately for evaluation and result reporting.
+        self._last_record = {**observation, "demand": demand_today}
 
         # Advance to the next day
         if self.day >= self.n_days:
@@ -130,6 +155,15 @@ class InventoryEnv:
 
         return observation
 
+    def get_last_record(self) -> Dict:
+        """Return the evaluator's full record for the most recent day.
+
+        This record contains true demand and must not be passed to the policy.
+        """
+        if self._last_record is None:
+            raise RuntimeError("No day has been executed yet.")
+        return dict(self._last_record)
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -137,8 +171,8 @@ class InventoryEnv:
         """Reset the environment for a fresh 31-day simulation."""
         self.day = 1
         self.inventory = int(self.initial_inventory)
-        self.pending_orders = {}
         self._done = False
+        self._last_record = None
         return self.get_state()
 
     @property
@@ -155,4 +189,4 @@ class InventoryEnv:
             profit_upper = sum((price - unit_cost) * demand_t)
         No lost sales, no holding cost. No online algorithm can exceed this.
         """
-        return float(sum((self.price - self.unit_cost) * d for d in self.demand))
+        return float(sum((self.price - self.unit_cost) * d for d in self._demand))

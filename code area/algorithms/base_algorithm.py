@@ -45,7 +45,11 @@ class BaseAlgorithm:
 
     def update(self, observation: Dict) -> None:
         """Update internal state from the post-decision observation
-        returned by the Environment."""
+        returned by the Environment.
+
+        Actual demand is intentionally absent: after a stockout, only sales
+        (a lower bound on demand) are observable.
+        """
         raise NotImplementedError
 
     # ------------------------------------------------------------------
@@ -62,4 +66,3 @@ class BaseAlgorithm:
         values = np.asarray(values, dtype=float)
         best = np.flatnonzero(values == values.max())
         return int(self.rng.choice(best))
-
