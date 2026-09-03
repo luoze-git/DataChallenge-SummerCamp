@@ -4,6 +4,7 @@
 """
 from algorithms.base_algorithm import BaseAlgorithm
 from algorithms.epsilon_greedy import EpsilonGreedy
+from algorithms.ewf import EWF
 from algorithms.gradient import GradientBandit
 from algorithms.ucb import UCB
 
@@ -11,6 +12,7 @@ ALGORITHM_REGISTRY = {
     UCB.name: UCB,
     EpsilonGreedy.name: EpsilonGreedy,
     GradientBandit.name: GradientBandit,
+    EWF.name: EWF,
 }
 
 
@@ -31,6 +33,7 @@ __all__ = [
     "UCB",
     "EpsilonGreedy",
     "GradientBandit",
+    "EWF",
     "ALGORITHM_REGISTRY",
     "create_algorithm",
 ]

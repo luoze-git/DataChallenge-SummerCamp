@@ -14,7 +14,9 @@ code area/
 │   ├── base_algorithm.py    # 统一接口
 │   ├── ucb.py
 │   ├── epsilon_greedy.py
-│   └── gradient.py
+│   ├── gradient.py
+│   └── ewf.py               # EWF / FSF（见 1234.pdf）
+├── optimization/
 ├── optimization/
 │   └── parameter_tuning.py  # Grid Search / Random Search 自动调参
 ├── visualization/
@@ -26,7 +28,7 @@ code area/
 ├── data/
 │   └── daily_demand.csv
 └── results/
-    ├── <algorithm>/          # 单算法目录（ucb / epsilon_greedy / gradient ...）
+    ├── <algorithm>/          # 单算法目录（ucb / epsilon_greedy / gradient / ewf ...）
     │   ├── daily_results.csv
     │   └── figures/          # 该算法的 order_up_to / daily_profit / cumulative_profit 图
     ├── comparison/           # 跨算法比较结果
@@ -44,8 +46,9 @@ code area/
 python main.py --algorithm ucb
 python main.py --algorithm epsilon_greedy
 python main.py --algorithm gradient
+python main.py --algorithm ewf      # EWF / FSF（见 1234.pdf）
 
-# 比较多个算法
+# 比较多个算法（默认自动包含全部已注册算法）
 python -m experiments.compare_algorithms
 
 # 参数优化（Grid / Random Search）
@@ -76,6 +79,29 @@ python experiments/run_tuning.py --algorithm gradient --method random --n-trials
 每次运行（main / comparison / tuning）都会同时打印**利润相对上限的百分比**：完全预知（每天令 `q_t = demand`）的理论上限为
 `upper = Σ (price − unit_cost) × demand`，算法利润占该上限的百分比即
 `pct_of_upper`（也会作为列保存在 tuning 的 CSV 中）。
+
+## 新增算法：EWF / FSF
+
+依据 1234.pdf（Lugosi, Markakis & Neu, arXiv:1710.05739）。EWF（Exponentially
+Weighted Forecaster）对每个 order-up-to level 维护指数权重，以
+`p_i = (1−γ)·W_i/ΣW + γ/N` 采样。**本仓库是论文严格意义上的 censored
+设定**：Environment 交给策略的 observation 里不包含真实 demand，缺货时只能
+看到 sales（需求下界）。EWF 的优势正在于对这种“被审查的销售数据”利用其
+**局部可观测性**（Lemma 1）做低方差更新，遗憾 `O(√(T log N))`：
+
+* 未缺货日（`sales` < 当天可用量）：`demand == sales` 精确已知，对**全部**
+  备选水平做精确的报童损失更新；
+* 缺货日（`sales` == 当天可用量）：只知 `demand ≥ 可用量`，用论文 §2.3 的
+  估计器仅更新 `≤ 当天水平` 的动作（i 越大越不易被选中，重要性分母
+  `P(I_t ≥ i)` 自动校正）。
+
+`share_alpha > 0` 时切换为 FSF（论文 §3，Eq. 6）：权重更新时给每个水平固定
+份额 `α/N`，用于跟踪需求漂移。主要参数见 `config.py` 的
+`ALGORITHM_PARAMS["ewf"]`：`eta`（学习率，None→理论值）、`gamma`（均匀探索，
+None→理论值）、`share_alpha`（0→EWF；>0→FSF）、`feedback`（本环境为
+`"censored"`；`"full"` 需 observation 披露 demand）、`cost`（报童损失口径；
+env_profit 需逐日真实 demand，censored 下不可用）。细节见
+`algorithms/ewf.py` 模块 docstring。
 
 ## 扩展新算法
 

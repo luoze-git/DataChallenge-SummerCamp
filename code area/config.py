@@ -38,6 +38,18 @@ ALGORITHM_PARAMS = {
         "use_baseline": True,   # 是否使用 reward baseline
         "reward_scale": 10000.0 # reward 缩放（利润数值较大，避免偏好值爆炸）
     },
+    # EWF（依据 1234.pdf；本仓库为 censored 环境：observation 不含 demand）
+    "ewf": {
+        # 默认值经 run_tuning 调优（多种子取均值后确定）。eta/gamma=None
+        # 会回退到论文 Theorem 1/2 的理论值；share_alpha>0 切换为 FSF 变体。
+        "eta": 0.0001,          # 学习率
+        "gamma": 0.0,           # 均匀探索率（论文 Eq.4 的 γ/N）
+        "share_alpha": 0.0,     # 0 → 纯 EWF；>0（如 1/N_DAYS）→ FSF 固定份额
+        "feedback": "censored", # 本环境只披露被审查的 sales（不披露 demand）
+        "cost": "newsvendor",   # 报童损失口径（censored 下唯一可用）
+        "overage": None,        # None → unit_cost + holding_cost
+        "underage": None,       # None → price − unit_cost
+    },
 }
 
 # ---------------- 路径 ----------------

@@ -40,6 +40,16 @@ def main() -> None:
     elif args.algorithm == "epsilon_greedy":
         param_grid = {"epsilon": [0.02, 0.05, 0.1, 0.2, 0.3],
                       "optimistic_init": [0.0]}
+    elif args.algorithm == "ewf":
+        # EWF / FSF（censored）：eta 学习率、gamma 探索、share_alpha(0→EWF, >0→FSF)
+        # cost 只用 newsvendor：本环境不披露 demand，env_profit 口径不可用。
+        param_grid = {"eta": [1e-4, 3e-4, 1e-3, 3e-3, 5e-3, 1e-2],
+                      "gamma": [0.0, 0.02, 0.05],
+                      "share_alpha": [0.0, 1.0 / 31.0, 0.1],
+                      "feedback": ["censored"],
+                      "cost": ["newsvendor"],
+                      "overage": [None],
+                      "underage": [None]}
     else:  # gradient
         param_grid = {"alpha": [0.1, 0.25, 0.5, 1.0, 2.0],
                       "use_baseline": [True],
